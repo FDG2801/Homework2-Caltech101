@@ -17,43 +17,62 @@ class Caltech(VisionDataset):
     def __init__(self, root, split='train', transform=None, target_transform=None):
         super(Caltech, self).__init__(root, transform=transform, target_transform=target_transform)
 
-        self.split = split  # This defines the split you are going to use
-        # (split files are called 'train.txt' and 'test.txt')
-        self._class_finder(self.root, "BACKGROUND_Google")
-        if not split.endswith(".txt"):
-            split = split + ".txt"
+        self.split = split # This defines the split you are going to use
+                           # (split files are called 'train.txt' and 'test.txt')
 
-        input_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), split)
+        '''
+        - Here you should implement the logic for reading the splits files and accessing elements
+        - If the RAM size allows it, it is faster to store all data in memory
+        - PyTorch Dataset classes use indexes to read elements
+        - You should provide a way for the __getitem__ method to access the image-label pair
+          through the index
+        - Labels should start from 0, so for Caltech you will have lables 0...100 (excluding the background class) 
+        '''
+        self.objectCategories=os.listdir(root+"101_ObjectCategories") #prendo tutte le cartelle di 101_ObjectCategories
+        self.objectCategories.remove("BACKGROUND_Google") #rimuovo la cartella di backgroud
 
-        self._items = []
-        with open(input_path, "r") as split_file:
-            for file_line in split_file.readlines():
-                line = file_line.replace("\n", "")
-                if not line.startswith("BACKGROUND_Google"):
-                    category, img = line.split("/")
-                    self._items.append((pil_loader(os.path.join(self.root, category, img)),
-                                        self.class_list.index(category)))
+        #now i have to create the dataset
+        '''
+        - You should provide a way for the __getitem__ method to access the image-label pair through the index
+        I can create a tuple (img, category) where category is the name of the directory, but numbered.
+        '''
+        self.dataset={}
+        self.key=0
+        self.categories={}
 
-    def _class_finder(self, folder, folder_to_exclude):
-        self.class_list = [d.name for d in os.scandir(folder) if d.is_dir() and d.name != folder_to_exclude]
-        self.class_list.sort()
+        for i, category in zip(range(len(self.objectCategories)),self.objectCategories):
+            self.categories[category]=i #the key will the the value, so value = index -> so for example:
+            '''
+            zip(range(len(self.objectCategories)) gives me the full list of directories but numerical
+            self.ObjectCategories gives me the NAME of the category.
+
+            faces for example will be i=0 and self.objectCategories = faces.
+            '''
+            images=os.listdir(root+"101_ObjectCategories/"+category)
+            for image in images:
+                self.dataset[self.key]= (pil_loader(root+"101_ObjectCategories/"+category+"/"+image), i)
+                '''
+                pil_loader gives me the image, so I put in the the key value
+                '''
+                self.key+=1 
 
     def __getitem__(self, index):
         '''
         __getitem__ should access an element through its index
         Args:
             index (int): Index
+
         Returns:
             tuple: (sample, target) where target is class_index of the target class.
         '''
 
-        image, label = self._items[index]  # Provide a way to access image and label via index
-        # Image should be a PIL Image
-        # label can be int
-
-        # Applies preprocessing when accessing the image
+        image, label = self.dataset[index] # Provide a way to access image and label via index
+                           # Image should be a PIL Image
+                           # label can be int
+        #should be able already like this
+        # Applies preprocessing when accessing the image - no changing
         if self.transform is not None:
-            image = self.transform(image)
+            image = self.transform(image) 
 
         return image, label
 
@@ -62,5 +81,5 @@ class Caltech(VisionDataset):
         The __len__ method returns the length of the dataset
         It is mandatory, as this is used by several other components
         '''
-        length = len(self._items)# Provide a way to get the length (number of elements) of the dataset
+        length = len(self.dataset) # Provide a way to get the length (number of elements) of the dataset
         return length
