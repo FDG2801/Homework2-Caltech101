@@ -65,16 +65,16 @@ class Caltech(VisionDataset):
         Returns:
             tuple: (sample, target) where target is class_index of the target class.
         '''
-        for i in range(index):
-            image, label = self.dataset[index] # Provide a way to access image and label via index
-                            # Image should be a PIL Image
-                            # label can be int
-            #should be able already like this
-            # Applies preprocessing when accessing the image - no changing here
-            if self.transform is not None:
-                image = self.transform(image) 
 
-            return image, label
+        image, label = self.dataset[index] # Provide a way to access image and label via index
+                           # Image should be a PIL Image
+                           # label can be int
+        #should be able already like this
+        # Applies preprocessing when accessing the image - no changing
+        if self.transform is not None:
+            image = self.transform(image) 
+
+        return image, label
 
     def __len__(self):
         '''
