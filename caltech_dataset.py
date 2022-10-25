@@ -20,66 +20,80 @@ class Caltech(VisionDataset):
         self.split = split # This defines the split you are going to use
                            # (split files are called 'train.txt' and 'test.txt')
 
-        '''
-        - Here you should implement the logic for reading the splits files and accessing elements
-        - If the RAM size allows it, it is faster to store all data in memory
-        - PyTorch Dataset classes use indexes to read elements
-        - You should provide a way for the __getitem__ method to access the image-label pair
-          through the index
-        - Labels should start from 0, so for Caltech you will have lables 0...100 (excluding the background class) 
-        '''
-        self.objectCategories=os.listdir(root+"101_ObjectCategories") #prendo tutte le cartelle di 101_ObjectCategories
-        self.objectCategories.remove("BACKGROUND_Google") #rimuovo la cartella di backgroud
+        #Generate a list containing all the classes available in the dataset and a list of index for the classes
+        classes = self._find_classes(self.root + "/101_ObjectCategories")
 
-        #now i have to create the dataset
-        '''
-        - You should provide a way for the __getitem__ method to access the image-label pair through the index
-        I can create a tuple (img, category) where category is the name of the directory, but numbered.
-        '''
-        self.dataset={}
-        self.key=0
-        self.categories={}
+        self.classes = classes
+        self.classes.remove('BACKGROUND_Google') 
 
-        for i, category in zip(range(len(self.objectCategories)),self.objectCategories):
-            self.categories[category]=i #the key will the the value, so value = index -> so for example:
-            '''
-            zip(range(len(self.objectCategories)) gives me the full list of directories but numerical
-            self.ObjectCategories gives me the NAME of the category.
+        #Open and read the file containing all the elements of the split set
+        pathsplit = root + "/" + split + ".txt"
+        f = open(pathsplit, 'r')
+        lines = f.readlines()
 
-            faces for example will be i=0 and self.objectCategories = faces.
-            '''
-            images=os.listdir(root+"101_ObjectCategories/"+category)
-            for image in images:
-                self.dataset[self.key]= (pil_loader(root+"101_ObjectCategories/"+category+"/"+image), i)
-                '''
-                pil_loader gives me the image, so I put in the the key value
-                '''
-                self.key+=1 
+        items = []
+        items_as_string = []
+        #Generate a list of elements name
+        for line in lines:
+            ln = line.replace('\n','')
+            if(ln.split("/")[0] != "BACKGROUND_Google") :
+              items_as_string.append(ln)
+              items.append(pil_loader( root + "/101_ObjectCategories/" + ln))
+        f.close()
+        
+        self.items = items
+        self.items_as_string = items_as_string
+  
+
+    def _find_classes(self, dir):
+        classes = [d.name for d in os.scandir(dir) if d.is_dir()]
+        classes.sort()
+        return classes
 
     def __getitem__(self, index):
         '''
         __getitem__ should access an element through its index
         Args:
             index (int): Index
-
         Returns:
             tuple: (sample, target) where target is class_index of the target class.
         '''
+        #Find the string (label + img_name) corrispondent to index passed as input
+        item = self.items_as_string[index]
+        
+        #Divide the item into label (that is the class) and image name
+        label, image_name = item.split("/")  
 
-        image, label = self.dataset[index] # Provide a way to access image and label via index
-                           # Image should be a PIL Image
-                           # label can be int
-        #should be able already like this
-        # Applies preprocessing when accessing the image - no changing
+        #By the index, access directly the img file
+        image = self.items[index]    
+
+        # Applies preprocessing when accessing the image
         if self.transform is not None:
-            image = self.transform(image) 
+            image = self.transform(image)
 
-        return image, label
+        #By the label, return the index of the class in the list of all the classes for the dataset
+        target = self.classes.index(label)
+
+        return image, target
 
     def __len__(self):
         '''
         The __len__ method returns the length of the dataset
         It is mandatory, as this is used by several other components
         '''
-        length = len(self.dataset) # Provide a way to get the length (number of elements) of the dataset
+        length = len(self.items)
         return length
+
+    def __getSubsets__(self, percentage):
+        import random
+        percentage = percentage/100
+        first_split = []
+        second_split = []
+        for _class_ in self.classes:
+            elements = [key for key, val in enumerate(self.items_as_string) if val.startswith(_class_)]
+            tmp_split1 = random.sample(range(min(elements), max(elements)), int(len(elements)*percentage) )
+            tmp_split1.sort()
+            tmp_split2 = set(elements) - set(tmp_split1)
+            first_split.extend(tmp_split1)
+            second_split.extend(tmp_split2)
+        return first_split, second_split
