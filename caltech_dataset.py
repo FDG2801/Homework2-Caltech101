@@ -29,22 +29,8 @@ class Caltech(VisionDataset):
           through the index
         - Labels should start from 0, so for Caltech you will have lables 0...100 (excluding the background class) 
         '''
-    
-        self.objectCategories = os.listdir(root+"101_ObjectCategories")
-        self.objectCategories.remove("BACKGROUND_Google")
-        self.dataset = {}
-        self.cont = 0
-        
-        self.categories = {}
-        for i, category in zip(range(len(self.objectCategories)), self.objectCategories):
-            self.categories[category] = i # key = category and value = index
-            
-            images = os.listdir(root+"101_ObjectCategories/"+category)
-            for image in images:
-                self.dataset[self.cont] = (pil_loader(root+"101_ObjectCategories/"+category+"/"+image), i)
-                # tuple (image, category)
-                self.cont += 1
-           
+        path="/content/Caltech101/"+self.split+".txt"
+        self.data=list
         
     
     def __getitem__(self, index):
